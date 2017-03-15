@@ -178,6 +178,8 @@ def submit(_=''):
             for c in range(1, len(row)+1):
                 _cell = sheet.cell(row=active_row, column=c, value=row[c-1])
             desc.set("Succesfully submitted %i of %s." % (q, item.get()))
+            item.set("")
+            quantity.delete(1.0, END)
             book.save('S:\Requests.xlsx')
         return 'break'
 
