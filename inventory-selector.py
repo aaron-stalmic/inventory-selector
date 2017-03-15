@@ -1,10 +1,16 @@
 from tkinter import *
 from tkinter import ttk
 from tkinter import messagebox
+from tkinter import font
 from inventory import inventory
 from time import sleep
 from drivers import drivers
+from trucks import trucks
 from datetime import date
+from openpyxl import Workbook
+from openpyxl import load_workbook
+from openpyxl.styles import Font
+
 
 
 class AutocompleteEntry(Entry):
@@ -116,6 +122,10 @@ class AutocompleteCombobox(ttk.Combobox):
             self.delete(0, END)
             self.insert(0, self._hits[self._hit_index])
             self.select_range(self.position, END)
+            try:
+                desc.set(inventory[item.get()])
+            except:
+                desc.set('')
 
     def handle_keyrelease(self, event):
         """
@@ -146,48 +156,70 @@ def submit(_=''):
         if int(float(q)) != float(q):
             raise
     except:
-        error = "Quantity must be an integer value."
-        messagebox.showwarning("Error", error)
+        desc.set("Quantity must be an integer value.")
         return 'break'
     else:
         q = int(float(q))
-        today = date.today().strftime("%m/%d/%y")
-        with open('S:\Requests.csv', 'a') as f:
-            f.write("%s,%s,=\"%s\",%i\n" % (today, driver.get(), item.get(), q))
+        today = date.today().strftime("%m/%d/%Y")
+        if driver.get() == "" or truck.get() == "" or item.get() == "":
+            desc.set("Must have driver, truck, and item.")
+        else:
+            try:
+                book = load_workbook('S:\Requests.xlsx')
+            except FileNotFoundError:
+                book = Workbook()
+            sheet = book.active
+            heading = ["Date", "Driver", "Truck", "Item", "Quantity"]
+            for c in range(1, len(heading)+1):
+                _cell = sheet.cell(row=1, column=c, value=heading[c-1])
+                _cell.font = Font(bold=True)
+            row = [today, driver.get(), truck.get(), item.get(), q]
+            active_row = sheet.max_row+1
+            for c in range(1, len(row)+1):
+                _cell = sheet.cell(row=active_row, column=c, value=row[c-1])
+            desc.set("Succesfully submitted %i of %s." % (q, item.get()))
+            book.save('S:\Requests.xlsx')
         return 'break'
 
 
 inventory_list = list(inventory.keys())
 root = Tk()
+default_font = font.nametofont("TkDefaultFont")
+default_font.configure(size=14)
+root.option_add("*Font", default_font)
 Grid.rowconfigure(root, 0, weight=0, pad=3)
+Grid.rowconfigure(root, 1, weight=0, pad=3)
+Grid.rowconfigure(root, 2, weight=0, pad=3)
 # Grid.columnconfigure(root, 0, weight=0)
-root.geometry("270x200+30+30")
+root.geometry("420x350+30+30")
 driverlabel = Label(root, text="Driver:")
 driverlabel.grid(row=0, column=0, sticky=N)
 driver = StringVar()
-driverlist = ttk.Combobox(root, textvariable=driver, values=drivers)
+driverlist = AutocompleteCombobox(root, textvariable=driver, values=drivers)
+driverlist.set_completion_list(drivers)
 driverlist.grid(row=0, column=1, sticky=N)
+trucklabel = Label(root, text="Truck:")
+trucklabel.grid(row=1, column=0, sticky=N)
+truck = StringVar()
+trucklist = AutocompleteCombobox(root, textvariable=truck, values=trucks)
+trucklist.set_completion_list(trucks)
+trucklist.grid(row=1, column=1, sticky=N)
 combolabel = Label(root, text="Item:")
-combolabel.grid(row=1, column=0, sticky=N)
+combolabel.grid(row=2, column=0, sticky=N)
 item = StringVar()
 combo = AutocompleteCombobox(root, textvariable=item, width=20)
 desc = StringVar()
 combo.bind('<<ComboboxSelected>>', update_item)
 combo.set_completion_list(inventory_list)
-combo.grid(row=1, column=1, sticky=N)
-description = Label(root, textvariable=desc, wraplength=200, width=30)
-description.grid(row=2, column=0, columnspan=2, sticky=N)
+combo.grid(row=2, column=1, sticky=N)
+description = Label(root, textvariable=desc, wraplength=300, width=30)
+description.grid(row=3, column=0, columnspan=2, sticky=N)
 quantitylabel = Label(root, text="Quantity")
-quantitylabel.grid(row=0, column=2, sticky=N)
+quantitylabel.grid(row=1, column=2, sticky=N)
 quantity = Text(root, height=1, width=5)
-quantity.grid(row=1, column=2, sticky=W, padx=10)
+quantity.grid(row=2, column=2, sticky=W, padx=10)
 quantity.bind('<Return>', submit)
 submitbutton = Button(root, text="Submit", command=submit)
-submitbutton.grid(row=2, column=2, sticky=N)
+submitbutton.grid(row=3, column=2, sticky=N)
 combo.focus_set()
-while True:
-    try:
-        desc.set(inventory[item.get()])
-    except:
-        desc.set('')
-    root.update()
+root.mainloop()
